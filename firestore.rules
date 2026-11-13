@@ -1,0 +1,463 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (
+        request.auth.token.email_verified == true ||
+        ('phone_number' in request.auth.token && request.auth.token.phone_number != null)
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email_verified == true && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'n.manikanta212@gmail.com'
+      );
+    }
+
+    function isValidPublicProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'photoURL', 'bio', 'role', 'creatorLevel', 'favoriteGenres', 'followersCount', 'totalHoursListened', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.role is string && data.role in ['listener', 'creator']
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 512))
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 400))
+        && (!('creatorLevel' in data) || (data.creatorLevel is string && data.creatorLevel in ['Beginner', 'Rising', 'Top Creator']))
+        && (!('favoriteGenres' in data) || (data.favoriteGenres is list && data.favoriteGenres.size() <= 12 && (data.favoriteGenres.size() == 0 || data.favoriteGenres[0] is string)))
+        && (!('followersCount' in data) || (data.followersCount is int && data.followersCount >= 0))
+        && (!('totalHoursListened' in data) || (data.totalHoursListened is number && data.totalHoursListened >= 0))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateInfo(data, userId) {
+      return data.keys().hasAll(['uid', 'coins', 'isPremium', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'phoneNumber', 'coins', 'isPremium', 'streakDays', 'lastCheckInDate', 'preferredLanguage', 'parentalPinEnabled', 'parentalPin', 'quietHoursEnabled', 'wifiOnlyDownloads', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.coins is int && data.coins >= 0 && data.coins <= 1000000
+        && data.isPremium is bool
+        && (!('email' in data) || (data.email is string && data.email.size() <= 200))
+        && (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 24))
+        && (!('streakDays' in data) || (data.streakDays is int && data.streakDays >= 0 && data.streakDays <= 3650))
+        && (!('lastCheckInDate' in data) || (data.lastCheckInDate is string && data.lastCheckInDate.size() <= 32))
+        && (!('preferredLanguage' in data) || (data.preferredLanguage is string && data.preferredLanguage.size() <= 40))
+        && (!('parentalPinEnabled' in data) || data.parentalPinEnabled is bool)
+        && (!('parentalPin' in data) || (data.parentalPin is string && data.parentalPin.size() <= 16))
+        && (!('quietHoursEnabled' in data) || data.quietHoursEnabled is bool)
+        && (!('wifiOnlyDownloads' in data) || data.wifiOnlyDownloads is bool)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSeries(data, seriesId) {
+      return data.keys().hasAll(['seriesId', 'title', 'description', 'creatorId', 'creatorName', 'language', 'genre', 'ageRating', 'seriesType', 'pricingMode', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['seriesId', 'title', 'description', 'coverUrl', 'creatorId', 'creatorName', 'language', 'genre', 'subGenre', 'tags', 'ageRating', 'seriesType', 'pricingMode', 'coinPricePerEpisode', 'status', 'rejectionReason', 'totalPlays', 'ratingAvg', 'ratingCount', 'episodeCount', 'createdAt', 'updatedAt'])
+        && data.seriesId is string && data.seriesId == seriesId && isValidId(data.seriesId)
+        && data.title is string && data.title.size() >= 2 && data.title.size() <= 140
+        && data.description is string && data.description.size() >= 10 && data.description.size() <= 2000
+        && data.creatorId is string && isValidId(data.creatorId)
+        && data.creatorName is string && data.creatorName.size() >= 1 && data.creatorName.size() <= 80
+        && data.language is string && data.language.size() >= 1 && data.language.size() <= 40
+        && data.genre is string && data.genre.size() >= 1 && data.genre.size() <= 40
+        && data.ageRating is string && data.ageRating in ['General', '13+', '18+']
+        && data.seriesType is string && data.seriesType in ['Fiction', 'Non-fiction', 'Podcast', 'Educational', 'Kids', 'Audiobook']
+        && data.pricingMode is string && data.pricingMode in ['free', 'premium']
+        && data.status is string && data.status in ['draft', 'under_review', 'published', 'rejected']
+        && (!('coverUrl' in data) || (data.coverUrl is string && data.coverUrl.size() <= 512))
+        && (!('subGenre' in data) || (data.subGenre is string && data.subGenre.size() <= 40))
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10 && (data.tags.size() == 0 || data.tags[0] is string)))
+        && (!('coinPricePerEpisode' in data) || (data.coinPricePerEpisode is int && data.coinPricePerEpisode >= 0 && data.coinPricePerEpisode <= 500))
+        && (!('rejectionReason' in data) || (data.rejectionReason is string && data.rejectionReason.size() <= 400))
+        && (!('totalPlays' in data) || (data.totalPlays is int && data.totalPlays >= 0))
+        && (!('ratingAvg' in data) || (data.ratingAvg is number && data.ratingAvg >= 0 && data.ratingAvg <= 5))
+        && (!('ratingCount' in data) || (data.ratingCount is int && data.ratingCount >= 0))
+        && (!('episodeCount' in data) || (data.episodeCount is int && data.episodeCount >= 0))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidEpisode(data, seriesId, episodeId) {
+      return data.keys().hasAll(['episodeId', 'seriesId', 'creatorId', 'episodeNumber', 'title', 'durationSec', 'isFree', 'coinPrice', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['episodeId', 'seriesId', 'creatorId', 'episodeNumber', 'title', 'description', 'durationSec', 'isFree', 'coinPrice', 'audioMode', 'scriptText', 'voiceName', 'bgMusicTrack', 'playCount', 'status', 'createdAt', 'updatedAt'])
+        && data.episodeId is string && data.episodeId == episodeId && isValidId(data.episodeId)
+        && data.seriesId is string && data.seriesId == seriesId && isValidId(data.seriesId)
+        && data.creatorId is string && isValidId(data.creatorId)
+        && data.episodeNumber is int && data.episodeNumber >= 1 && data.episodeNumber <= 5000
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+        && data.durationSec is int && data.durationSec > 600 && data.durationSec <= 36000
+        && data.isFree is bool
+        && data.coinPrice is int && data.coinPrice >= 0 && data.coinPrice <= 500
+        && data.status is string && data.status in ['draft', 'under_review', 'published', 'rejected']
+        && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
+        && (!('audioMode' in data) || (data.audioMode is string && data.audioMode in ['tts', 'recorded', 'uploaded', 'synth']))
+        && (!('scriptText' in data) || (data.scriptText is string && data.scriptText.size() <= 8000))
+        && (!('voiceName' in data) || (data.voiceName is string && data.voiceName.size() <= 60))
+        && (!('bgMusicTrack' in data) || (data.bgMusicTrack is string && data.bgMusicTrack.size() <= 60))
+        && (!('playCount' in data) || (data.playCount is int && data.playCount >= 0))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidReview(data, seriesId, reviewId) {
+      return data.keys().hasAll(['reviewId', 'seriesId', 'userId', 'userName', 'rating', 'comment', 'createdAt'])
+        && data.keys().hasOnly(['reviewId', 'seriesId', 'userId', 'userName', 'rating', 'comment', 'createdAt'])
+        && data.reviewId is string && data.reviewId == reviewId && isValidId(data.reviewId)
+        && data.seriesId is string && data.seriesId == seriesId && isValidId(data.seriesId)
+        && data.userId is string && isValidId(data.userId)
+        && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 80
+        && data.rating is int && data.rating >= 1 && data.rating <= 5
+        && data.comment is string && data.comment.size() >= 2 && data.comment.size() <= 1000
+        && data.createdAt is timestamp;
+    }
+
+    function isValidComment(data, seriesId, episodeId, commentId) {
+      return data.keys().hasAll(['commentId', 'seriesId', 'episodeId', 'userId', 'userName', 'text', 'createdAt'])
+        && data.keys().hasOnly(['commentId', 'seriesId', 'episodeId', 'userId', 'userName', 'text', 'isPinned', 'replyText', 'createdAt'])
+        && data.commentId is string && data.commentId == commentId && isValidId(data.commentId)
+        && data.seriesId is string && data.seriesId == seriesId && isValidId(data.seriesId)
+        && data.episodeId is string && data.episodeId == episodeId && isValidId(data.episodeId)
+        && data.userId is string && isValidId(data.userId)
+        && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 80
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 800
+        && (!('isPinned' in data) || data.isPinned is bool)
+        && (!('replyText' in data) || (data.replyText is string && data.replyText.size() <= 800))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidLibraryItem(data, userId, seriesId) {
+      return data.keys().hasAll(['userId', 'seriesId', 'saved', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'seriesId', 'saved', 'unlockedEpisodeIds', 'completedEpisodeIds', 'lastEpisodeId', 'lastPositionSec', 'updatedAt'])
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.seriesId is string && data.seriesId == seriesId && isValidId(data.seriesId)
+        && data.saved is bool
+        && (!('unlockedEpisodeIds' in data) || (data.unlockedEpisodeIds is list && data.unlockedEpisodeIds.size() <= 500 && (data.unlockedEpisodeIds.size() == 0 || data.unlockedEpisodeIds[0] is string)))
+        && (!('completedEpisodeIds' in data) || (data.completedEpisodeIds is list && data.completedEpisodeIds.size() <= 500 && (data.completedEpisodeIds.size() == 0 || data.completedEpisodeIds[0] is string)))
+        && (!('lastEpisodeId' in data) || (data.lastEpisodeId is string && data.lastEpisodeId.size() <= 128))
+        && (!('lastPositionSec' in data) || (data.lastPositionSec is int && data.lastPositionSec >= 0))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPlaylist(data, userId, playlistId) {
+      return data.keys().hasAll(['playlistId', 'userId', 'name', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['playlistId', 'userId', 'name', 'episodeRefs', 'createdAt', 'updatedAt'])
+        && data.playlistId is string && data.playlistId == playlistId && isValidId(data.playlistId)
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && (!('episodeRefs' in data) || (data.episodeRefs is list && data.episodeRefs.size() <= 200 && (data.episodeRefs.size() == 0 || data.episodeRefs[0] is string)))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTransaction(data, userId, txId) {
+      return data.keys().hasAll(['txId', 'userId', 'type', 'amountCoins', 'description', 'invoiceId', 'createdAt'])
+        && data.keys().hasOnly(['txId', 'userId', 'type', 'amountCoins', 'amountInr', 'description', 'invoiceId', 'createdAt'])
+        && data.txId is string && data.txId == txId && isValidId(data.txId)
+        && data.userId is string && data.userId == userId && isValidId(data.userId)
+        && data.type is string && data.type in ['coin_pack', 'episode_unlock', 'daily_checkin', 'referral', 'subscription', 'ad_reward', 'coupon', 'payout']
+        && data.amountCoins is int && data.amountCoins >= -100000 && data.amountCoins <= 100000
+        && (!('amountInr' in data) || (data.amountInr is number && data.amountInr >= 0 && data.amountInr <= 500000))
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 240
+        && data.invoiceId is string && data.invoiceId.size() >= 1 && data.invoiceId.size() <= 64
+        && data.createdAt is timestamp;
+    }
+
+    function isValidReport(data, reportId) {
+      return data.keys().hasAll(['reportId', 'targetType', 'targetId', 'reporterId', 'reason', 'status', 'createdAt'])
+        && data.keys().hasOnly(['reportId', 'targetType', 'targetId', 'reporterId', 'reason', 'status', 'createdAt'])
+        && data.reportId is string && data.reportId == reportId && isValidId(data.reportId)
+        && data.targetType is string && data.targetType in ['series', 'episode', 'comment', 'user']
+        && data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128
+        && data.reporterId is string && isValidId(data.reporterId)
+        && data.reason is string && data.reason.size() >= 3 && data.reason.size() <= 500
+        && data.status is string && data.status in ['open', 'resolved', 'dismissed']
+        && data.createdAt is timestamp;
+    }
+
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list, write: if false;
+    }
+
+    match /users_public/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if resource.data.role in ['listener', 'creator'];
+      allow create: if isVerifiedUser()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidPublicProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidPublicProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'bio', 'role', 'favoriteGenres', 'updatedAt']))
+        );
+      allow delete: if false;
+    }
+
+    match /users_private/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerifiedUser()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidPrivateInfo(incoming(), userId)
+        && incoming().coins <= 1000
+        && incoming().isPremium == false
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidPrivateInfo(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly([
+            'phoneNumber', 'coins', 'isPremium', 'streakDays', 'lastCheckInDate', 'preferredLanguage',
+            'parentalPinEnabled', 'parentalPin', 'quietHoursEnabled', 'wifiOnlyDownloads', 'updatedAt'
+          ]))
+        );
+      allow delete: if isOwner(userId) || isAdmin();
+
+      match /library/{seriesId} {
+        allow get: if isValidId(userId) && isValidId(seriesId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin()) && resource.data.userId == userId;
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(userId)
+          && isValidId(seriesId)
+          && isValidLibraryItem(incoming(), userId, seriesId)
+          && incoming().updatedAt == request.time;
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(userId)
+          && isValidId(seriesId)
+          && isValidLibraryItem(incoming(), userId, seriesId)
+          && incoming().userId == existing().userId
+          && incoming().seriesId == existing().seriesId
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['saved', 'unlockedEpisodeIds', 'completedEpisodeIds', 'lastEpisodeId', 'lastPositionSec', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(seriesId);
+      }
+
+      match /playlists/{playlistId} {
+        allow get: if isValidId(userId) && isValidId(playlistId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin()) && resource.data.userId == userId;
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(userId)
+          && isValidId(playlistId)
+          && isValidPlaylist(incoming(), userId, playlistId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(userId)
+          && isValidId(playlistId)
+          && isValidPlaylist(incoming(), userId, playlistId)
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'episodeRefs', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(playlistId);
+      }
+
+      match /transactions/{txId} {
+        allow get: if isValidId(userId) && isValidId(txId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && (isOwner(userId) || isAdmin()) && resource.data.userId == userId;
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(userId)
+          && isValidId(txId)
+          && isValidTransaction(incoming(), userId, txId)
+          && incoming().createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    match /series/{seriesId} {
+      allow get: if isValidId(seriesId) && (
+        resource.data.status == 'published' ||
+        (isSignedIn() && resource.data.creatorId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow list: if resource.data.status == 'published'
+        || (isSignedIn() && resource.data.creatorId == request.auth.uid)
+        || isAdmin();
+      allow create: if isVerifiedUser()
+        && isValidId(seriesId)
+        && isValidSeries(incoming(), seriesId)
+        && incoming().creatorId == request.auth.uid
+        && incoming().status in ['draft', 'under_review']
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(seriesId)
+        && isValidSeries(incoming(), seriesId)
+        && incoming().creatorId == existing().creatorId
+        && incoming().seriesId == existing().seriesId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            existing().creatorId == request.auth.uid &&
+            incoming().status in ['draft', 'under_review'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'description', 'coverUrl', 'language', 'genre', 'subGenre',
+              'tags', 'ageRating', 'seriesType', 'pricingMode', 'coinPricePerEpisode',
+              'status', 'episodeCount', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isValidId(seriesId) && (isAdmin() || (isVerifiedUser() && existing().creatorId == request.auth.uid && existing().status == 'draft'));
+
+      match /episodes/{episodeId} {
+        allow get: if isValidId(seriesId) && isValidId(episodeId) && (
+          resource.data.status == 'published' ||
+          (isSignedIn() && resource.data.creatorId == request.auth.uid) ||
+          isAdmin()
+        );
+        allow list: if isValidId(seriesId) && (
+          resource.data.status == 'published' ||
+          (isSignedIn() && resource.data.creatorId == request.auth.uid) ||
+          isAdmin()
+        );
+        allow create: if isVerifiedUser()
+          && isValidId(seriesId)
+          && isValidId(episodeId)
+          && isValidEpisode(incoming(), seriesId, episodeId)
+          && incoming().creatorId == request.auth.uid
+          && incoming().status in ['draft', 'under_review']
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/series/$(seriesId))
+          && get(/databases/$(database)/documents/series/$(seriesId)).data.creatorId == request.auth.uid;
+        allow update: if isVerifiedUser()
+          && isValidId(seriesId)
+          && isValidId(episodeId)
+          && isValidEpisode(incoming(), seriesId, episodeId)
+          && incoming().creatorId == existing().creatorId
+          && incoming().seriesId == existing().seriesId
+          && incoming().episodeId == existing().episodeId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/series/$(seriesId))
+          && (
+            isAdmin() ||
+            (
+              get(/databases/$(database)/documents/series/$(seriesId)).data.creatorId == request.auth.uid &&
+              incoming().status in ['draft', 'under_review'] &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'episodeNumber', 'title', 'description', 'durationSec', 'isFree',
+                'coinPrice', 'audioMode', 'scriptText', 'voiceName', 'bgMusicTrack',
+                'status', 'updatedAt'
+              ])
+            )
+          );
+        allow delete: if isValidId(seriesId) && isValidId(episodeId) && (
+          isAdmin() ||
+          (isVerifiedUser() && get(/databases/$(database)/documents/series/$(seriesId)).data.creatorId == request.auth.uid)
+        );
+
+        match /comments/{commentId} {
+          allow get: if isValidId(seriesId) && isValidId(episodeId) && isValidId(commentId);
+          allow list: if isValidId(seriesId) && isValidId(episodeId) && resource.data.episodeId == episodeId;
+          allow create: if isVerifiedUser()
+            && isValidId(seriesId)
+            && isValidId(episodeId)
+            && isValidId(commentId)
+            && isValidComment(incoming(), seriesId, episodeId, commentId)
+            && incoming().userId == request.auth.uid
+            && incoming().createdAt == request.time
+            && exists(/databases/$(database)/documents/series/$(seriesId)/episodes/$(episodeId));
+          allow update: if isVerifiedUser()
+            && isValidId(seriesId)
+            && isValidId(episodeId)
+            && isValidId(commentId)
+            && isValidComment(incoming(), seriesId, episodeId, commentId)
+            && incoming().userId == existing().userId
+            && incoming().createdAt == existing().createdAt
+            && (
+              isAdmin() ||
+              (get(/databases/$(database)/documents/series/$(seriesId)).data.creatorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['isPinned', 'replyText'])) ||
+              (existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['text']))
+            );
+          allow delete: if isVerifiedUser() && isValidId(commentId) && (isAdmin() || existing().userId == request.auth.uid);
+        }
+      }
+
+      match /reviews/{reviewId} {
+        allow get: if isValidId(seriesId) && isValidId(reviewId);
+        allow list: if isValidId(seriesId) && resource.data.seriesId == seriesId;
+        allow create: if isVerifiedUser()
+          && isValidId(seriesId)
+          && isValidId(reviewId)
+          && isValidReview(incoming(), seriesId, reviewId)
+          && incoming().userId == request.auth.uid
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/series/$(seriesId));
+        allow update: if isVerifiedUser()
+          && isValidId(seriesId)
+          && isValidId(reviewId)
+          && isValidReview(incoming(), seriesId, reviewId)
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && (isAdmin() || (existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment'])));
+        allow delete: if isVerifiedUser() && isValidId(reviewId) && (isAdmin() || existing().userId == request.auth.uid);
+      }
+    }
+
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId) && (isAdmin() || (isSignedIn() && resource.data.reporterId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.reporterId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(reportId)
+        && isValidReport(incoming(), reportId)
+        && incoming().reporterId == request.auth.uid
+        && incoming().status == 'open'
+        && incoming().createdAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(reportId)
+        && isValidReport(incoming(), reportId)
+        && existing().status == 'open'
+        && incoming().reporterId == existing().reporterId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin() && isValidId(reportId);
+    }
+  }
+}

@@ -1,0 +1,235 @@
+{
+  "entities": {
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Public creator and listener profile without PII.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "bio": { "type": "string", "maxLength": 400 },
+        "role": { "type": "string", "enum": ["listener", "creator", "admin"] },
+        "creatorLevel": { "type": "string", "enum": ["Beginner", "Rising", "Top Creator"] },
+        "favoriteGenres": { "type": "array" },
+        "followersCount": { "type": "integer" },
+        "totalHoursListened": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Private PII, wallet balance, subscription, and user settings.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 200 },
+        "phoneNumber": { "type": "string", "maxLength": 24 },
+        "coins": { "type": "integer" },
+        "isPremium": { "type": "boolean" },
+        "streakDays": { "type": "integer" },
+        "lastCheckInDate": { "type": "string", "maxLength": 32 },
+        "preferredLanguage": { "type": "string", "maxLength": 40 },
+        "parentalPinEnabled": { "type": "boolean" },
+        "parentalPin": { "type": "string", "maxLength": 16 },
+        "quietHoursEnabled": { "type": "boolean" },
+        "wifiOnlyDownloads": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "coins", "isPremium", "createdAt", "updatedAt"]
+    },
+    "Series": {
+      "title": "Series",
+      "description": "An episodic audio drama, audiobook, or podcast series.",
+      "type": "object",
+      "properties": {
+        "seriesId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "description": { "type": "string", "minLength": 10, "maxLength": 2000 },
+        "coverUrl": { "type": "string", "maxLength": 512 },
+        "creatorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "creatorName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "language": { "type": "string", "maxLength": 40 },
+        "genre": { "type": "string", "maxLength": 40 },
+        "subGenre": { "type": "string", "maxLength": 40 },
+        "tags": { "type": "array" },
+        "ageRating": { "type": "string", "enum": ["General", "13+", "18+"] },
+        "seriesType": { "type": "string", "enum": ["Fiction", "Non-fiction", "Podcast", "Educational", "Kids", "Audiobook"] },
+        "pricingMode": { "type": "string", "enum": ["free", "premium"] },
+        "coinPricePerEpisode": { "type": "integer" },
+        "status": { "type": "string", "enum": ["draft", "under_review", "published", "rejected"] },
+        "rejectionReason": { "type": "string", "maxLength": 400 },
+        "totalPlays": { "type": "integer" },
+        "ratingAvg": { "type": "number" },
+        "ratingCount": { "type": "integer" },
+        "episodeCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seriesId", "title", "description", "creatorId", "creatorName", "language", "genre", "ageRating", "seriesType", "pricingMode", "status", "createdAt", "updatedAt"]
+    },
+    "Episode": {
+      "title": "Episode",
+      "description": "Individual audio episode inside a series.",
+      "type": "object",
+      "properties": {
+        "episodeId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "seriesId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "creatorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "episodeNumber": { "type": "integer" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "durationSec": { "type": "integer" },
+        "isFree": { "type": "boolean" },
+        "coinPrice": { "type": "integer" },
+        "audioMode": { "type": "string", "enum": ["tts", "recorded", "uploaded", "synth"] },
+        "scriptText": { "type": "string", "maxLength": 8000 },
+        "voiceName": { "type": "string", "maxLength": 60 },
+        "bgMusicTrack": { "type": "string", "maxLength": 60 },
+        "playCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["draft", "under_review", "published", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["episodeId", "seriesId", "creatorId", "episodeNumber", "title", "durationSec", "isFree", "coinPrice", "status", "createdAt", "updatedAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User rating and review for a series.",
+      "type": "object",
+      "properties": {
+        "reviewId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "seriesId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string", "minLength": 2, "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reviewId", "seriesId", "userId", "userName", "rating", "comment", "createdAt"]
+    },
+    "EpisodeComment": {
+      "title": "EpisodeComment",
+      "description": "Listener comment on an episode with optional creator pin or reply.",
+      "type": "object",
+      "properties": {
+        "commentId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "seriesId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "episodeId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "isPinned": { "type": "boolean" },
+        "replyText": { "type": "string", "maxLength": 800 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["commentId", "seriesId", "episodeId", "userId", "userName", "text", "createdAt"]
+    },
+    "LibraryItem": {
+      "title": "LibraryItem",
+      "description": "Per-user saved status, unlocked episodes, and playback resume state for a series.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "seriesId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "saved": { "type": "boolean" },
+        "unlockedEpisodeIds": { "type": "array" },
+        "completedEpisodeIds": { "type": "array" },
+        "lastEpisodeId": { "type": "string", "maxLength": 128 },
+        "lastPositionSec": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "seriesId", "saved", "updatedAt"]
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "User-created custom audio playlist.",
+      "type": "object",
+      "properties": {
+        "playlistId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "episodeRefs": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["playlistId", "userId", "name", "createdAt", "updatedAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Coin wallet, subscription, and payout transaction ledger entry.",
+      "type": "object",
+      "properties": {
+        "txId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["coin_pack", "episode_unlock", "daily_checkin", "referral", "subscription", "ad_reward", "coupon", "payout"] },
+        "amountCoins": { "type": "integer" },
+        "amountInr": { "type": "number" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "invoiceId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["txId", "userId", "type", "amountCoins", "description", "invoiceId", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Content or user moderation report.",
+      "type": "object",
+      "properties": {
+        "reportId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "targetType": { "type": "string", "enum": ["series", "episode", "comment", "user"] },
+        "targetId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reporterId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "reason": { "type": "string", "minLength": 3, "maxLength": 500 },
+        "status": { "type": "string", "enum": ["open", "resolved", "dismissed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reportId", "targetType", "targetId", "reporterId", "reason", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users_public/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublicProfile" },
+      "description": "Public creator and user profiles."
+    },
+    "/users_private/{userId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Private PII, wallet coins, and app preferences."
+    },
+    "/users_private/{userId}/library/{seriesId}": {
+      "schema": { "$ref": "#/entities/LibraryItem" },
+      "description": "User saved series, unlocked episodes, and playback resume state."
+    },
+    "/users_private/{userId}/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/Playlist" },
+      "description": "Custom playlists owned by the user."
+    },
+    "/users_private/{userId}/transactions/{txId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User coin and payment transaction ledger."
+    },
+    "/series/{seriesId}": {
+      "schema": { "$ref": "#/entities/Series" },
+      "description": "Audio series catalog and creator studio drafts."
+    },
+    "/series/{seriesId}/episodes/{episodeId}": {
+      "schema": { "$ref": "#/entities/Episode" },
+      "description": "Episodes belonging to a series."
+    },
+    "/series/{seriesId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Ratings and reviews for a series."
+    },
+    "/series/{seriesId}/episodes/{episodeId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/EpisodeComment" },
+      "description": "Comments and creator replies on an episode."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Moderation reports submitted by users."
+    }
+  }
+}

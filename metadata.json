@@ -1,0 +1,10 @@
+{
+  "name": "KathaStream",
+  "description": "Episodic audio-series streaming platform and creator studio for multi-language audio dramas, podcasts, and AI voice stories.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
